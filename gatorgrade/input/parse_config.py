@@ -459,24 +459,33 @@ def parse_config(
     # as doing so will crash the program and display a stack trace
     if file.is_dir():
         return [], f"The path {file} is a directory, not a file."
+    if not file.exists():
+        return [], f"The path {file} does not exist."
     try:
-        # parse the YAML file using parse_yaml_file provided by gatorgrade
+        # Read the configuration file
         parsed_yaml_file = parse_yaml_file(file)
-        # the parsed YAML file contains some contents in a list and thus
-        # the tool should generate a GatorGrader check for each element in list
-        if len(parsed_yaml_file) > 0:
-            # after reformatting the parse YAML file,
-            # use it to generate all of the checks;
-            # these will be valid checks that are now
-            # ready for execution with this tool
-            parse_con = generate_checks(
-                reformat_yaml_data(parsed_yaml_file), baseline_weight
+
+        # Handle empty files and comment-only files
+        if not parsed_yaml_file:
+            return [], f"The configuration file {file} contains no checks."
+
+        # Handle YAML documents containing only separators
+        if all(document is None for document in parsed_yaml_file):
+            return [], (
+                f"The configuration file {file} contains "
+                "a document separator but no checks."
             )
-            return parse_con, None
-        # return an empty list because of the fact that the
-        # parsing process did not return a list with content;
-        # allow the calling function to handle the empty list
-        return [], None
+
+        # Convert the YAML data into checks
+        formatted_data = reformat_yaml_data(parsed_yaml_file)
+        checks = generate_checks(formatted_data, baseline_weight)
+
+        # Handle configurations with an empty list of checks
+        if not checks:
+            return [], f"The configuration file {file} contains no checks."
+
+        return checks, None
+
     except (
         yaml.YAMLError,
         ValueError,
