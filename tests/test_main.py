@@ -114,7 +114,7 @@ def test_gatorgrade_with_nonexistent_file(
     capsys.readouterr()
     print(result.stdout)  # noqa: T201
     assert result.exit_code == 1
-    assert "either does not exist or is not valid" in result.stdout
+    assert "The path nonexistent.yml does not exist." in result.stdout
 
 
 class TestFilterCli:
@@ -1224,7 +1224,7 @@ def test_gatorgrade_with_config_dir_nonexistent_file(
     capsys.readouterr()
     print(result.stdout)  # noqa: T201
     assert result.exit_code == 1
-    assert "either does not exist or is not valid" in result.stdout
+    assert "The path gatorgrade.yml does not exist." in result.stdout
 
 
 def test_filter_passed_last_is_accepted(

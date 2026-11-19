@@ -457,30 +457,35 @@ def parse_config(
     # --config gatorgrade.yml gives a clear error message; this
     # is critical because you cannot read a directory as a file
     # as doing so will crash the program and display a stack trace
+    file_error = None
     if file.is_dir():
-        return [], f"The path {file} is a directory, not a file."
-    if not file.exists():
-        return [], f"The path {file} does not exist."
+        file_error = f"The path {file} is a directory, not a file."
+    elif not file.exists():
+        file_error = f"The path {file} does not exist."
+
+    if file_error:
+        return [], file_error
     try:
-        # Read the configuration file
+        # read the YAML configuration file
         parsed_yaml_file = parse_yaml_file(file)
 
-        # Handle empty files and comment-only files
-        if not parsed_yaml_file:
-            return [], f"The configuration file {file} contains no checks."
-
-        # Handle YAML documents containing only separators
-        if all(document is None for document in parsed_yaml_file):
+        # handle configurations containing only YAML separators
+        if parsed_yaml_file and all(
+            document is None for document in parsed_yaml_file
+        ):
             return [], (
                 f"The configuration file {file} contains "
                 "a document separator but no checks."
             )
 
-        # Convert the YAML data into checks
-        formatted_data = reformat_yaml_data(parsed_yaml_file)
-        checks = generate_checks(formatted_data, baseline_weight)
+        # generate checks if the configuration has content
+        checks = []
+        if parsed_yaml_file:
+            checks = generate_checks(
+                reformat_yaml_data(parsed_yaml_file), baseline_weight
+            )
 
-        # Handle configurations with an empty list of checks
+        # handle existing configurations without checks
         if not checks:
             return [], f"The configuration file {file} contains no checks."
 
