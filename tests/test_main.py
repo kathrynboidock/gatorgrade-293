@@ -584,6 +584,131 @@ def test_gatorgrade_with_invalid_yaml_file(
     assert result.exit_code == 1
 
 
+def test_gatorgrade_with_missing_default_config(
+    chdir: Any, capsys: pytest.CaptureFixture[str], tmp_path: Path
+) -> None:
+    """A missing gatorgrade.yml reports that the file does not exist."""
+    # run in an empty directory so no default gatorgrade.yml is found
+    chdir(tmp_path)
+    result = runner.invoke(main.app, ["--no-progress-bar"])
+    capsys.readouterr()
+    print(result.stdout)  # noqa: T201
+    plain_stdout = " ".join(ANSI_ESCAPE_PATTERN.sub("", result.stdout).split())
+    # must fail with the documented FAILURE status, not crash
+    assert result.exit_code == 1
+    # an exception other than SystemExit would mean an uncaught crash
+    assert isinstance(result.exception, SystemExit)
+    # the message must say the file is missing
+    assert "gatorgrade.yml does not exist." in plain_stdout
+    # no traceback or leaked Python-internal text
+    assert "Traceback" not in plain_stdout
+    assert "NoneType" not in plain_stdout
+
+
+def test_gatorgrade_with_empty_config(
+    chdir: Any, capsys: pytest.CaptureFixture[str], tmp_path: Path
+) -> None:
+    """An empty configuration file reports that it contains no checks."""
+    (tmp_path / "gatorgrade.yml").write_text("")
+    chdir(tmp_path)
+    result = runner.invoke(main.app, ["--no-progress-bar"])
+    capsys.readouterr()
+    print(result.stdout)  # noqa: T201
+    plain_stdout = " ".join(ANSI_ESCAPE_PATTERN.sub("", result.stdout).split())
+    # must fail with the documented FAILURE status, not crash
+    assert result.exit_code == 1
+    assert isinstance(result.exception, SystemExit)
+    # the message must describe the real cause
+    assert "contains no checks." in plain_stdout
+    assert "either does not exist or is not valid" not in plain_stdout
+    assert "Traceback" not in plain_stdout
+    assert "NoneType" not in plain_stdout
+
+
+def test_gatorgrade_with_comment_only_config(
+    chdir: Any, capsys: pytest.CaptureFixture[str], tmp_path: Path
+) -> None:
+    """A comment-only configuration file reports that it contains no checks."""
+    # YAML comments are valid but produce no documents
+    (tmp_path / "gatorgrade.yml").write_text(
+        "# checks are added in the next milestone\n"
+    )
+    chdir(tmp_path)
+    result = runner.invoke(main.app, ["--no-progress-bar"])
+    capsys.readouterr()
+    print(result.stdout)  # noqa: T201
+    plain_stdout = " ".join(ANSI_ESCAPE_PATTERN.sub("", result.stdout).split())
+    assert result.exit_code == 1
+    assert isinstance(result.exception, SystemExit)
+    assert "contains no checks." in plain_stdout
+    assert "either does not exist or is not valid" not in plain_stdout
+    assert "Traceback" not in plain_stdout
+    assert "NoneType" not in plain_stdout
+
+
+def test_gatorgrade_with_empty_list_config(
+    chdir: Any, capsys: pytest.CaptureFixture[str], tmp_path: Path
+) -> None:
+    """A configuration containing only [] reports that it contains no checks."""
+    # a valid YAML document whose only content is an empty list
+    (tmp_path / "gatorgrade.yml").write_text("---\n[]\n")
+    chdir(tmp_path)
+    result = runner.invoke(main.app, ["--no-progress-bar"])
+    capsys.readouterr()
+    print(result.stdout)  # noqa: T201
+    plain_stdout = " ".join(ANSI_ESCAPE_PATTERN.sub("", result.stdout).split())
+    assert result.exit_code == 1
+    assert isinstance(result.exception, SystemExit)
+    assert "contains no checks." in plain_stdout
+    assert "either does not exist or is not valid" not in plain_stdout
+    assert "Traceback" not in plain_stdout
+    assert "NoneType" not in plain_stdout
+
+
+def test_gatorgrade_with_separator_only_config(
+    chdir: Any, capsys: pytest.CaptureFixture[str], tmp_path: Path
+) -> None:
+    """A configuration containing only --- reports a clear, non-Python message."""
+    # a lone document separator parses to a single None document
+    (tmp_path / "gatorgrade.yml").write_text("---\n")
+    chdir(tmp_path)
+    result = runner.invoke(main.app, ["--no-progress-bar"])
+    capsys.readouterr()
+    print(result.stdout)  # noqa: T201
+    plain_stdout = " ".join(ANSI_ESCAPE_PATTERN.sub("", result.stdout).split())
+    assert result.exit_code == 1
+    assert isinstance(result.exception, SystemExit)
+    # the message must describe the separator, not leak the Python TypeError
+    assert "contains a document separator but no checks." in plain_stdout
+    assert "Traceback" not in plain_stdout
+    assert "NoneType" not in plain_stdout
+
+
+def test_gatorgrade_with_valid_config(
+    chdir: Any, capsys: pytest.CaptureFixture[str], tmp_path: Path
+) -> None:
+    """A normal configuration runs grading and exits successfully."""
+    (tmp_path / "gatorgrade.yml").write_text(
+        "setup: |\n"
+        "  echo setup\n"
+        "---\n"
+        "- description: Say hello\n"
+        '  command: "echo hello"\n'
+    )
+    chdir(tmp_path)
+    # skip report history so no history file is written during the test
+    result = runner.invoke(
+        main.app, ["--no-progress-bar", "--no-report-history"]
+    )
+    capsys.readouterr()
+    print(result.stdout)  # noqa: T201
+    assert result.exit_code == 0
+    plain_stdout = ANSI_ESCAPE_PATTERN.sub("", result.stdout)
+    assert "Say hello" in plain_stdout
+    assert "- Checks: 1/1 (100%)" in plain_stdout
+    assert "Traceback" not in plain_stdout
+
+
 def test_gatorgrade_with_version_flag(
     chdir: Any, capsys: pytest.CaptureFixture[str]
 ) -> None:

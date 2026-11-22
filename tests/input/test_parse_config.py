@@ -1,3 +1,4 @@
+"""Test suite for parse_config function"""
 from pathlib import Path
 
 import pytest
