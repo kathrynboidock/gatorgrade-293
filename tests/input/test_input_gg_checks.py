@@ -50,6 +50,91 @@ def test_parse_config_returns_error_for_directory() -> None:
         assert "directory" in error.lower()
         assert "not a file" in error.lower()
 
+def test_parse_config_returns_error_for_missing_file(tmp_path: Path) -> None:
+    """Test parse_config reports that a missing file does not exist."""
+    # given a path to a configuration file that was never created
+    missing = tmp_path / "gatorgrade.yml"
+    # when parse_config is run
+    checks, error = parse_config(missing)
+    # then checks is empty and the error is about the path, not the contents
+    assert checks == []
+    assert error == f"The path {missing} does not exist."
+
+
+def test_parse_config_returns_error_for_empty_file(tmp_path: Path) -> None:
+    """Test parse_config reports that an empty file contains no checks."""
+    # given an existing configuration file with no content
+    config = tmp_path / "gatorgrade.yml"
+    config.write_text("")
+    # when parse_config is run
+    checks, error = parse_config(config)
+    # then the error says the file has no checks, not that it is missing
+    assert checks == []
+    assert error == f"The configuration file {config} contains no checks."
+
+
+def test_parse_config_returns_error_for_comment_only_file(
+    tmp_path: Path,
+) -> None:
+    """Test parse_config reports that a comment-only file contains no checks."""
+    # given a configuration file containing only a YAML comment
+    config = tmp_path / "gatorgrade.yml"
+    config.write_text("# checks are added in the next milestone\n")
+    # when parse_config is run
+    checks, error = parse_config(config)
+    # then the error says the file has no checks
+    assert checks == []
+    assert error == f"The configuration file {config} contains no checks."
+
+
+def test_parse_config_returns_error_for_empty_list(tmp_path: Path) -> None:
+    """Test parse_config reports that a file containing only [] has no checks."""
+    # given a configuration file whose only content is an empty YAML list
+    config = tmp_path / "gatorgrade.yml"
+    config.write_text("---\n[]\n")
+    # when parse_config is run
+    checks, error = parse_config(config)
+    # then the error says the file has no checks
+    assert checks == []
+    assert error == f"The configuration file {config} contains no checks."
+
+
+def test_parse_config_returns_error_for_separator_only_file(
+    tmp_path: Path,
+) -> None:
+    """Test parse_config reports a clear message for a separator-only file."""
+    # given a configuration file whose only content is a YAML separator
+    config = tmp_path / "gatorgrade.yml"
+    config.write_text("---\n")
+    # when parse_config is run
+    checks, error = parse_config(config)
+    # then the error describes the separator instead of leaking the
+    # Python-internal "'NoneType' object is not iterable" message
+    assert checks == []
+    assert error == (
+        f"The configuration file {config} contains "
+        "a document separator but no checks."
+    )
+
+
+def test_parse_config_returns_checks_for_valid_file(tmp_path: Path) -> None:
+    """Test parse_config still returns checks and no error for valid input."""
+    # given a valid configuration file with one shell check
+    config = tmp_path / "gatorgrade.yml"
+    config.write_text(
+        "setup: |\n"
+        "  echo setup\n"
+        "---\n"
+        "- description: Say hello\n"
+        '  command: "echo hello"\n'
+    )
+    # when parse_config is run
+    checks, error = parse_config(config)
+    # then one check is returned and there is no error
+    assert error is None
+    assert len(checks) == 1
+    assert isinstance(checks[0], ShellCheck)
+
 
 def test_get_due_date_returns_datetime_when_specified(tmp_path: Path) -> None:
     """Test get_due_date returns a datetime from the front matter."""
