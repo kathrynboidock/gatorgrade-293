@@ -50,6 +50,7 @@ def test_parse_config_returns_error_for_directory() -> None:
         assert "directory" in error.lower()
         assert "not a file" in error.lower()
 
+
 def test_parse_config_returns_error_for_missing_file(tmp_path: Path) -> None:
     """Test parse_config reports that a missing file does not exist."""
     # given a path to a configuration file that was never created
@@ -109,7 +110,7 @@ def test_parse_config_returns_error_for_separator_only_file(
     # when parse_config is run
     checks, error = parse_config(config)
     # then the error describes the separator instead of leaking the
-    # Python-internal "'NoneType' object is not iterable" message
+    # avoid exposing the internal Python error message
     assert checks == []
     assert error == (
         f"The configuration file {config} contains "

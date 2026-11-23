@@ -629,7 +629,7 @@ def test_gatorgrade_with_comment_only_config(
     chdir: Any, capsys: pytest.CaptureFixture[str], tmp_path: Path
 ) -> None:
     """A comment-only configuration file reports that it contains no checks."""
-    # YAML comments are valid but produce no documents
+    # a YAML comment is valid but produces no documents
     (tmp_path / "gatorgrade.yml").write_text(
         "# checks are added in the next milestone\n"
     )
